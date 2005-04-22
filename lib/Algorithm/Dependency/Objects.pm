@@ -17,7 +17,7 @@ my %valid_set = (
 	isa => "Set::Object",
 	callbacks => {
 		"all members ->can('depends')" => sub {
-			all { $_->can("depends") } $_[0]->members;
+			$_[0]->size ? all { $_->can("depends") } $_[0]->members : 1;
 		},
 	},
 );
