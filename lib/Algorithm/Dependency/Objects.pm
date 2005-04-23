@@ -1,39 +1,38 @@
 #!/usr/bin/perl
 
 package Algorithm::Dependency::Objects;
-use base qw/Class::Accessor/;
 
 use strict;
 use warnings;
 
-use Set::Object;
-use List::MoreUtils qw/all/;
-use Params::Validate;
+our $VERSION = '0.01';
+
+use Scalar::Util qw/blessed/;
 use Carp qw/croak/;
 
-__PACKAGE__->mk_ro_accessors(qw/objects selected/);
-
-my %valid_set = (
-	isa => "Set::Object",
-	callbacks => {
-		"all members ->can('depends')" => sub {
-			$_[0]->size ? all { $_->can("depends") } $_[0]->members : 1;
-		},
-	},
-);
+use Set::Object;
 
 sub new {
-	my $pkg = shift;
-	my $self = bless { validate(@_, {
-		objects => \%valid_set,
-		selected => { %valid_set, default => Set::Object->new },
-	}) }, $pkg;
-
-	croak "selected objects aren't a subset of controlled objects"
-		unless $self->selected->subset($self->objects);
-
-	$self;
+	my ($pkg, %params) = @_;
+	(exists $params{'objects'} && # objects is a require parameter
+	    (blessed($params{'objects'}) && $params{'objects'}->isa('Set::Object')))
+    	    || croak "You must provide an 'objects' parameter, and it must be a Set::Object";
+    # all the contents of the Set::Object must have depends methods
+    $_->can("depends") || croak "Objects must have a 'depends' method"
+        foreach $params{'objects'}->members();  	    
+	# selected is an optional parameter, and ...
+    (blessed($params{'selected'}) && $params{'selected'}->isa('Set::Object') 
+        && $params{'selected'}->subset($params{'objects'})) # must be a subset of objects
+            || croak "'selected' parameter must be a Set::Object, and a subset of 'objects'"
+                if exists $params{'selected'};	
+	return bless {
+	    objects  => $params{'objects'},
+	    selected => $params{'selected'} || Set::Object->new
+	}, $pkg;
 }
+
+sub objects  { (shift)->{objects}  }
+sub selected { (shift)->{selected} }
 
 sub depends {
 	my $self = shift;

@@ -6,6 +6,8 @@ use base qw/Algorithm::Dependency::Objects/;
 use strict;
 use warnings;
 
+our $VERSION = '0.01';
+
 use Scalar::Util qw/refaddr/;
 use Carp qw/croak/;
 
