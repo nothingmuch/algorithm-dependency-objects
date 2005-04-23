@@ -73,7 +73,7 @@ __END__
 
 =head1 NAME
 
-Algorithm::Dependency::Objects::Ordered - 
+Algorithm::Dependency::Objects::Ordered - An ordered dependency set
 
 =head1 SYNOPSIS
 
@@ -81,4 +81,47 @@ Algorithm::Dependency::Objects::Ordered -
 
 =head1 DESCRIPTION
 
+=head1 METHODS
+
+=over 4
+
+=item B<new>
+
+=item B<objects>
+
+=item B<selected>
+
+=item B<depends>
+
+=item B<schedule>
+
+=item B<schedule_all>
+
+=back
+
+=head1 SEE ALSO
+
+Adam Kennedy's excellent L<Algorithm::Dependency::Ordered> module, upon which this is based.
+
+=head1 BUGS
+
+None that we are aware of. Of course, if you find a bug, let us know, and we will be sure to fix it.
+
+=head1 CODE COVERAGE
+
+We use Devel::Cover to test the code coverage of our tests, below is the Devel::Cover report on this module test suite.
+
+=head1 AUTHORS
+
+Yuval Kogman
+
+Stevan Little
+
+COPYRIGHT AND LICENSE 
+
+Copyright (C) 2005 Yuval Kogman, Stevan Little
+
+This library is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+
 =cut
+
