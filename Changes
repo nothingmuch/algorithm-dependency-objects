@@ -1,5 +1,8 @@
 Revision history for Perl extension Algorithm-Dependency-Objects.
 
+0.02
+	- Fixed META.yml file by rewriting prereqs
+
 0.01
     - module created
 
