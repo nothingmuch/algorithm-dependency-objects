@@ -14,17 +14,27 @@ use Set::Object;
 
 sub new {
 	my ($pkg, %params) = @_;
+
+	# silly stevan, wasn't Params::Validate simpler?
 	(exists $params{'objects'} && # objects is a require parameter
 	    (blessed($params{'objects'}) && $params{'objects'}->isa('Set::Object')))
     	    || croak "You must provide an 'objects' parameter, and it must be a Set::Object";
     # all the contents of the Set::Object must have depends methods
     $_->can("depends") || croak "Objects must have a 'depends' method"
-        foreach $params{'objects'}->members();  	    
+        foreach $params{'objects'}->members();
 	# selected is an optional parameter, and ...
-    (blessed($params{'selected'}) && $params{'selected'}->isa('Set::Object') 
+    (blessed($params{'selected'}) && $params{'selected'}->isa('Set::Object')
         && $params{'selected'}->subset($params{'objects'})) # must be a subset of objects
             || croak "'selected' parameter must be a Set::Object, and a subset of 'objects'"
-                if exists $params{'selected'};	
+                if exists $params{'selected'};
+
+	my $dependant = Set::Object->new(map { $_->depends } $params{'objects'}->members);
+	my $unresolvable = $dependant->difference($params{'objects'});
+
+	if ($unresolvable->size){
+		croak "Unresolvable items: " . join(", ", $unresolvable->members) . " resolvable " . join(", ", $params{'objects'}->members);
+	}
+
 	return bless {
 	    objects  => $params{'objects'},
 	    selected => $params{'selected'} || Set::Object->new
