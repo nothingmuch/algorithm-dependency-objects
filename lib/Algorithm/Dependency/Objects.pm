@@ -80,7 +80,7 @@ __END__
 
 =head1 NAME
 
-Algorithm::Dependency::Objects - An implementation of an Object Dependency Algorithm 
+Algorithm::Dependency::Objects - An implementation of an Object Dependency Algorithm
 
 =head1 SYNOPSIS
 
@@ -88,8 +88,8 @@ Algorithm::Dependency::Objects - An implementation of an Object Dependency Algor
 
 =head1 DESCRIPTION
 
-This modules is a re-implementation of L<Algorithm::Dependency> using pure objects 
-instead of object ids, making use of L<Set::Object> to manage dependencies. 
+This modules is a re-implementation of L<Algorithm::Dependency> using only
+objects instead of object ids, making use of L<Set::Object> for book-keeping.
 
 =head1 METHODS
 
@@ -97,15 +97,23 @@ instead of object ids, making use of L<Set::Object> to manage dependencies.
 
 =item B<new>
 
+Duh.
+
 =item B<objects>
 
 =item B<selected>
+
+Returns the L<Set::Object> representing this collection. Objects is an
+enumeration of all the object who we're dependo-frobnicating, and selected is
+those that don't need to be run.
 
 =item B<depends>
 
 =item B<schedule>
 
 =item B<schedule_all>
+
+See L<Algorithm::Dependency>'s corresponding methods.
 
 =back
 
@@ -127,7 +135,7 @@ Yuval Kogman
 
 Stevan Little
 
-COPYRIGHT AND LICENSE 
+=head1 COPYRIGHT AND LICENSE
 
 Copyright (C) 2005 Yuval Kogman, Stevan Little
 

@@ -109,7 +109,7 @@ None that we are aware of. Of course, if you find a bug, let us know, and we wil
 
 =head1 CODE COVERAGE
 
-We use Devel::Cover to test the code coverage of our tests, below is the Devel::Cover report on this module test suite.
+We use Devel::Cover to test the code coverage of our tests, see the CODE COVERAGE section of L<Algorithm::Dependency::Objects> for more information.
 
 =head1 AUTHORS
 
