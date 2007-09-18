@@ -10,6 +10,7 @@ Module::Build->new(
 	requires => {
 		'perl'				=> '5.008',
 		'Test::More'		=> '0.47',
+		'Test::Deep'        => 0,
 		'Scalar::Util'		=> '1.10',
 		'Carp'				=> 0,
 		'Set::Object'		=> 0,
