@@ -5,7 +5,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 49;
+use Test::More tests => 52;
 use Test::Deep;
 
 {
@@ -149,5 +149,20 @@ BEGIN { use_ok("Algorithm::Dependency::Objects::Ordered") }
 			[ @objs[8, 9, 7, 5, 2, 4, 0] ],
 			"complex schedule",
 		);
+
+		cmp_deeply(
+			[ $d->schedule_all ],
+			bag(@objs),
+			"schedule all",
+		);
+
+		push @{ $objs[7] }, $objs[2];
+
+		eval { $d->schedule($objs[0]) };
+		like( $@, qr/circular/i, "circular dependency" );
+
+		$d->selected->insert( $objs[2] ); # bootstrap
+		eval { $d->schedule($objs[0]) };
+		ok( !$@, "no error this time" );
 	}
 }
