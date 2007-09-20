@@ -12,33 +12,33 @@ use Scalar::Util qw/refaddr/;
 use Carp qw/croak/;
 
 sub schedule {
-	my $self = shift;
-	$self->_order($self->SUPER::schedule(@_));
+	my ( $self, @args ) = @_;
+	$self->_order($self->SUPER::schedule(@args));
 }
 
 sub schedule_all {
-	my $self = shift;
-	$self->_order($self->SUPER::schedule_all(@_));
+	my ( $self, @args ) = @_;
+	$self->_order($self->SUPER::schedule_all(@args));
 }
 
 sub _order {
-	my $self = shift;
-	my @queue = @_;
+	my ( $self, @queue ) = @_;
 
-
-	my $selected = Set::Object->new->union($self->selected);
+	my $selected = Set::Object->new( $self->selected->members );
 
 	my $error_marker;
 	my @schedule;
 
-	my %dep_set; # a cache of Set::Objects for $obj->depends
+	my %dep_set; 
 
 	while (@queue){
 		my $obj = shift @queue;
-		croak "Circular dependency detected!"
-			if (defined($error_marker) and refaddr($error_marker) == refaddr($obj));
+
+		if ( defined($error_marker) and refaddr($error_marker) == refaddr($obj) ) {
+			$self->circular_dep($obj, @queue);
+		}
 		
-		my $dep_set = $dep_set{refaddr $obj} ||= Set::Object->new($obj->depends);
+		my $dep_set = $dep_set{refaddr $obj} ||= Set::Object->new( $self->get_deps($obj) );
 
 		unless ($dep_set->subset($selected)){
 			# we have some missing deps
@@ -65,6 +65,12 @@ sub _order {
 	@schedule;
 }
 
+sub circular_dep {
+	my ( $self, $obj, @queue ) = @_;
+
+	croak "Circular dependency detected at $obj (queue: @queue)"
+}
+
 __PACKAGE__
 
 __END__
@@ -78,6 +84,16 @@ Algorithm::Dependency::Objects::Ordered - An ordered dependency set
 =head1 SYNOPSIS
 
 	use Algorithm::Dependency::Objects::Ordered;
+
+	my $o = Algorithm::Dependency::Ordered->new(
+		objects => \@some_objects,
+	);
+
+	foreach my $object ( $o->schedule_all ) {
+		print "$object, then...\n";		
+	}
+
+	print "done\n";
 
 =head1 DESCRIPTION
 
@@ -97,19 +113,13 @@ Algorithm::Dependency::Objects::Ordered - An ordered dependency set
 
 =item B<schedule_all>
 
+=item B<circular_dep>
+
 =back
 
 =head1 SEE ALSO
 
 Adam Kennedy's excellent L<Algorithm::Dependency::Ordered> module, upon which this is based.
-
-=head1 BUGS
-
-None that we are aware of. Of course, if you find a bug, let us know, and we will be sure to fix it.
-
-=head1 CODE COVERAGE
-
-We use Devel::Cover to test the code coverage of our tests, see the CODE COVERAGE section of L<Algorithm::Dependency::Objects> for more information.
 
 =head1 AUTHORS
 
@@ -119,7 +129,7 @@ Stevan Little
 
 COPYRIGHT AND LICENSE 
 
-Copyright (C) 2005 Yuval Kogman, Stevan Little
+Copyright (C) 2005, 2007 Yuval Kogman, Stevan Little
 
 This library is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 

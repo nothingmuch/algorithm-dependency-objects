@@ -12,41 +12,63 @@ use Carp qw/croak/;
 
 use Set::Object;
 
-sub new {
-	my ($pkg, %params) = @_;
+sub _to_set {
+	my ( $class, $objects ) = @_;
 
-	# silly stevan, wasn't Params::Validate simpler?
-	(exists $params{'objects'} && # objects is a require parameter
-	    (blessed($params{'objects'}) && $params{'objects'}->isa('Set::Object')))
-    	    || croak "You must provide an 'objects' parameter, and it must be a Set::Object";
-    # all the contents of the Set::Object must have depends methods
-    $_->can("depends") || croak "Objects must have a 'depends' method"
-        foreach $params{'objects'}->members();
-	# selected is an optional parameter, and ...
-    (blessed($params{'selected'}) && $params{'selected'}->isa('Set::Object')
-        && $params{'selected'}->subset($params{'objects'})) # must be a subset of objects
-            || croak "'selected' parameter must be a Set::Object, and a subset of 'objects'"
-                if exists $params{'selected'};
+	if ( ref $objects ) {
+		$objects = Set::Object->new(@$objects) if not blessed $objects and ref $objects eq 'ARRAY';
 
-	my $dependant = Set::Object->new(map { $_->depends } $params{'objects'}->members);
-	my $unresolvable = $dependant->difference($params{'objects'});
-
-	if ($unresolvable->size){
-		croak "Unresolvable items: " . join(", ", $unresolvable->members) . " resolvable " . join(", ", $params{'objects'}->members);
+		if ( blessed $objects and $objects->isa("Set::Object") ) {
+			return $objects;
+		}
 	}
 
+	return;
+}
+
+sub new {
+	my ($class, %params) = @_;
+
+	my $objects = $class->_to_set($params{objects}) or
+		croak "The 'objects' parameter must be an array reference or a Set::Object";
+	
+	my $selected = exists($params{selected})
+		? $class->_to_set($params{selected})
+		: Set::Object->new()
+			or croak "If provided, the 'selected' parameter must be an array reference or a Set::Object";
+	
+	# all the contents of the Set::Object must have depends methods
+	$class->assert_can_get_deps($objects);
+
+	$objects = $class->verify_input_set($objects);
+
 	return bless {
-	    objects  => $params{'objects'},
-	    selected => $params{'selected'} || Set::Object->new
-	}, $pkg;
+		objects  => $objects,
+		selected => $selected,
+	}, $class;
 }
 
 sub objects  { (shift)->{objects}  }
 sub selected { (shift)->{selected} }
 
+sub get_deps {
+	my ( $self, $obj ) = @_;
+	$obj->depends;
+}
+
+sub can_get_deps {
+	my ( $self, $obj ) = @_;
+	$obj->can("depends");
+}
+
+sub assert_can_get_deps {
+	my ( $self, $objs ) = @_;
+	$self->can_get_deps($_) || croak "Objects must have a 'depends' method" for $objs->members;
+}
+
 sub depends {
-	my $self = shift;
-	my @queue = grep { $_->depends } @_;
+	my ( $self, @objs ) = @_;
+	my @queue = grep { $self->get_deps($_) } @objs;
 
 	my $deps = Set::Object->new;
 	my $sel = $self->selected;
@@ -54,17 +76,47 @@ sub depends {
 
 	while (@queue){
 		my $obj = shift @queue;
-		croak "$obj is not in objects!"
+
+		$self->unknown_object($obj)
 			unless $objs->contains($obj);
+
 		next if $sel->contains($obj);
 		next if $deps->contains($obj);
 
-		my @new = Set::Object->new($obj->depends)->difference($sel)->members;
+		my @new = Set::Object->new($self->get_deps($obj))->difference($sel)->members;
 		push @queue, @new;
 		$deps->insert(@new);
 	}
 
 	$deps->members;
+}
+
+sub verify_input_set {
+	my ( $self, $objects ) = @_;
+
+	my $dependant = Set::Object->new(map { $self->get_deps($_) } $objects->members);
+
+	my $unresolvable = $dependant->difference($objects);
+
+	if ($unresolvable->size){
+		return $self->handle_missing_objects($unresolvable, $objects);
+	}
+
+	return $objects;
+}
+
+
+sub handle_missing_objects {
+	my ( $self, $missing, $objects ) = @_;
+
+	croak "Unresolvable objects " . join(", ", $missing->members);
+
+	# return $objects->union($missing);
+}
+
+sub unknown_object {
+	my ( $self, $obj ) = @_;
+	croak "$obj is not in the input objects";
 }
 
 sub schedule {
@@ -96,6 +148,15 @@ Algorithm::Dependency::Objects - An implementation of an Object Dependency Algor
 
 	use Algorithm::Dependency::Objects;
 
+	my $o = Algorithm::Dependency::Objects->new(
+		objects => \@objects,
+		selected => \@selected, # objects which are already taken care of
+	);
+
+	my @needed = $o->schedule( $objects[0] );
+
+	# need to take care of @needed for $objecs[0] to be resolved
+
 =head1 DESCRIPTION
 
 This modules is a re-implementation of L<Algorithm::Dependency> using only
@@ -124,6 +185,40 @@ those that don't need to be run.
 =item B<schedule_all>
 
 See L<Algorithm::Dependency>'s corresponding methods.
+
+=item B<verify_input_set> $object_set
+
+Make sure that the dependencies of every object in the set are also in the set.
+
+=item B<handle_missing_objects> $missing_set, $input_set
+
+Called by C<verify_input_set> when objects are missing from the input set.
+
+You can override this method to simply return
+
+	$input_set->union($missing_set);
+
+making all dependencies of the input objects implicit input objects themselves.
+
+=item B<unknown_object> $object
+
+Called when a new object pops out of the blue in the middle of processing (it
+means C<get_deps> is returning inconsistent values).
+
+=item B<get_deps> $object
+
+Extract the dependencies out of an object. Calls C<depends> on the object.
+
+=item B<can_get_deps> $object
+
+Default implementation is
+
+	$object->can("depends");
+
+=item B<assert_can_get_deps> $object_set
+
+Croaks if C<can_get_deps> doesn't return true for every object in the set.
+
 
 =back
 
