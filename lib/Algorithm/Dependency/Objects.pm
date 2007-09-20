@@ -68,27 +68,30 @@ sub assert_can_get_deps {
 
 sub depends {
 	my ( $self, @objs ) = @_;
-	my @queue = grep { $self->get_deps($_) } @objs;
 
-	my $deps = Set::Object->new;
-	my $sel = $self->selected;
-	my $objs = $self->objects;
+	my @queue = @objs;
+
+	my $selected_now = Set::Object->new;
+	my $selected_previously = $self->selected;
+
+	my $all_objects = $self->objects;
 
 	while (@queue){
 		my $obj = shift @queue;
 
-		$self->unknown_object($obj)
-			unless $objs->contains($obj);
+		$self->unknown_object($obj) unless $all_objects->contains($obj);
 
-		next if $sel->contains($obj);
-		next if $deps->contains($obj);
+		next if $selected_now->contains($obj);
+		next if $selected_previously->contains($obj);
 
-		my @new = Set::Object->new($self->get_deps($obj))->difference($sel)->members;
-		push @queue, @new;
-		$deps->insert(@new);
+		push @queue, $self->get_deps($obj);
+
+		$selected_now->insert($obj);
 	}
 
-	$deps->members;
+	$selected_now->remove(@objs);
+
+	return wantarray ? $selected_now->members : $selected_now;
 }
 
 sub verify_input_set {
@@ -120,13 +123,15 @@ sub unknown_object {
 }
 
 sub schedule {
-	my $self = shift;
-	my $sel = $self->selected;
+	my ( $self, @desired ) = @_;
 
-	return (
-		$self->depends(@_),
-		Set::Object->new(@_)->difference($self->selected)->members, # remove selected items
-	);
+	my $desired = Set::Object->new(@desired);
+
+	my $selected = $self->selected;
+
+	my $missing = $desired->difference($selected);
+
+	$self->depends(@desired)->union($missing)->members;
 }
 
 sub schedule_all {

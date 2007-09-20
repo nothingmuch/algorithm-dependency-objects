@@ -40,7 +40,7 @@ sub _order {
 		
 		my $dep_set = $dep_set{refaddr $obj} ||= Set::Object->new( $self->get_deps($obj) );
 
-		unless ($dep_set->subset($selected)){
+		unless ( $selected->superset($dep_set) ) {
 			# we have some missing deps
 			# put the object back in the queue
 			push @queue, $obj;
