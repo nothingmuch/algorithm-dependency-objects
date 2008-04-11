@@ -36,16 +36,19 @@ sub new {
 		? $class->_to_set($params{selected})
 		: Set::Object->new()
 			or croak "If provided, the 'selected' parameter must be an array reference or a Set::Object";
-	
-	# all the contents of the Set::Object must have depends methods
-	$class->assert_can_get_deps($objects);
 
-	$objects = $class->verify_input_set($objects);
-
-	return bless {
+	my $self = bless {
+		get_deps => $params{get_deps} || "depends",
 		objects  => $objects,
 		selected => $selected,
 	}, $class;
+
+	$self->verify_input_set;
+
+	# all the contents of the Set::Object must have depends methods
+	$self->assert_can_get_deps($objects);
+
+	return $self;
 }
 
 sub objects  { (shift)->{objects}  }
@@ -53,12 +56,18 @@ sub selected { (shift)->{selected} }
 
 sub get_deps {
 	my ( $self, $obj ) = @_;
-	$obj->depends;
+	$obj->${\ $self->{get_deps} };
 }
 
 sub can_get_deps {
 	my ( $self, $obj ) = @_;
-	$obj->can("depends");
+
+	use Carp;
+	Carp::confess "blah" unless ref $self;
+
+	my $method = $self->{get_deps};
+
+	ref $method or $obj->can($method);
 }
 
 sub assert_can_get_deps {
@@ -95,7 +104,9 @@ sub depends {
 }
 
 sub verify_input_set {
-	my ( $self, $objects ) = @_;
+	my $self = shift;
+
+	my $objects = $self->{objects};
 
 	my $dependant = Set::Object->new(map { $self->get_deps($_) } $objects->members);
 
@@ -104,8 +115,6 @@ sub verify_input_set {
 	if ($unresolvable->size){
 		return $self->handle_missing_objects($unresolvable, $objects);
 	}
-
-	return $objects;
 }
 
 
@@ -191,7 +200,7 @@ those that don't need to be run.
 
 See L<Algorithm::Dependency>'s corresponding methods.
 
-=item B<verify_input_set> $object_set
+=item B<verify_input_set>
 
 Make sure that the dependencies of every object in the set are also in the set.
 
